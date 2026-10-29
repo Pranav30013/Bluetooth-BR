@@ -2,7 +2,7 @@
 
 module filter_v1 #(
     parameter W=16)(
-    input clk,rst,data_in,dout_en,start,
+    input clk,rst,data_in,dout_en,start,enable,
     output reg signed [W:0] data_out
     );
     
@@ -14,8 +14,15 @@ module filter_v1 #(
     reg hold_bit;
     integer i;
     
+    reg enable_1;
+    
+    always@(posedge clk) begin
+        enable_1<=enable;
+    end
+    
+    
     always @(posedge clk)begin
-        if(rst)begin
+        if(rst || ~(enable || enable_1))begin
             data_out<= {W{1'b0}};
             shift_reg<= {NTAPS{1'b0}};
             hold_bit<=1'b0;

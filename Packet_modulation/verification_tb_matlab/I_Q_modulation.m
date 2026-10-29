@@ -48,6 +48,21 @@ xlabel('Sample');
 ylabel('Accumulated Phase (Radians)');
 legend('MATLAB Ideal', 'RTL Hardware', 'Location', 'best');
 grid on;
+
+%% Offset diagnosis
+raw   = phase_rtl;                               % raw 24-bit integers
+step  = floor(y_int * 2621 / 256);               % what the RTL math should give
+model = mod(cumsum(step), 2^24);                 % bit-exact accumulator model
+
+fprintf('first 5 phase_acc (RTL) : %s\n', mat2str(raw(1:5)));
+fprintf('first 5 filter_out      : %s\n', mat2str(y_int(1:5)));
+fprintf('first 5 expected steps  : %s\n', mat2str(step(1:5)));
+
+for d = 0:2
+    n = 20 : min(numel(model), numel(raw)-d) - 1;
+    e = mod(raw(n+d) - model(n) + 2^23, 2^24) - 2^23;   % signed, wrapped difference
+    fprintf('d=%d: offset min = %d, max = %d\n', d, min(e), max(e));
+end
 %% Local function
 function [f, phi, I, Q] = iq_from_filter(y_int, F, h, Rs, OSR)
 Ts  = 1/(Rs*OSR);

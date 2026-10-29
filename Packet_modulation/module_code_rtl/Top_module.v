@@ -6,7 +6,7 @@ module Top_module#(
     parameter integer ph_acc_width=24
     )(
     input clk,rst,start,
-    output done,data_out
+    output done,data_out,done_2,complete_3
     );
     
     // output of the Serialiser module
@@ -37,6 +37,23 @@ module Top_module#(
         end
     end
     
+    //generation of complete
+    reg complete_1,complete_2,complete_3;
+    always @(posedge clk)begin
+        complete_1<=done_2;
+        complete_2<=complete_1;
+        complete_3<=complete_2;
+    end
+    
+    //enable for the filter and IQ converter
+    reg enable;
+    
+    always @(posedge clk)begin
+        if(rst) enable<=1'b0;
+        else enable<=enable^start^done_2;
+    end
+    
+    
     //The serializer block
     Read_BRAM read_bram_module(
     .clk(clk),
@@ -45,6 +62,7 @@ module Top_module#(
     .row_addr(row_addr),
     .data_out(data_out),
     .done(done),
+    .done_2(done_2),
     .data_in(data_in),
     .dout_en(dout_en));
     
@@ -63,13 +81,17 @@ module Top_module#(
     .start(start),
     .dout_en(dout_en),
     .data_in(data_out),
-    .data_out(filter_out));
+    .data_out(filter_out),
+    .enable(enable)
+    );
     
     IQ_converter IQ_converter_module(
     .clk(clk),
     .rst(rst),
+    .start(start),
     .filter_output(filter_out),
-    .phase_acc(phase_acc)
+    .phase_acc(phase_acc),
+    .enable(enable)
     );
     
 endmodule

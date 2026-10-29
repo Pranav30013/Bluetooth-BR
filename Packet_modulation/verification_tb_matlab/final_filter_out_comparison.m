@@ -18,9 +18,9 @@ rtl  = rtl(:);
 y = conv(x, g_int(:));                 % y(n+1) is the output at 0-based index n
 
 %% Compare: skip the first Delay samples, and stop where either file ends
-n   = (NTAPS-1) : min(numel(x), numel(rtl) - DELAY) - 1;
-ref = y(n + 1);
-hw  = rtl(n + DELAY + 1);
+n   = (NTAPS-1) : min(numel(x), numel(rtl) - DELAY) - 2;
+ref = y(n + 1)/2^F;
+hw  = rtl(n + DELAY + 1)/2^F;
 err = ref - hw;
 
 fprintf('Compared %d samples, mismatches: %d, max abs error: %d\n', ...

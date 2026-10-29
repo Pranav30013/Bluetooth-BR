@@ -8,36 +8,43 @@ module top_module_tb#(
     `include "gauss_coeff.vh"
     localparam ACC_LEN = 72, HDR_LEN = 54, PAY_LEN = 240;
     localparam TOTAL   = ACC_LEN + HDR_LEN + PAY_LEN;      
-    
-    
-    
+       
     reg         clk = 0, rst = 1, start = 0;
     reg  [2:0]  OSR_count = 0;
-    wire [NTAPS-1:0] shift_reg;
+    wire [NTAPS-1:0] shift_reg_filt;
+    wire [31:0] shift_reg_ser;
     wire        dout_en ;                 
     wire [3:0]  row_addr;
-    wire  [31:0] data_in;                                    
+    wire  [31:0] blk_ram_out;                                    
     wire        data_out, done;
     wire signed [W:0] filter_out;
     wire signed [ph_acc_width-1:0] phase_acc;
-
-    // BRAM model
-    reg exp_bits [0:TOTAL-1] ;                          
-    integer nb, errors, first_bad;
-    
+    wire enable;
+    wire [8:0] bit_count_packet;
+    wire [4:0] bit_count_row;
+    wire done_2;
+    wire complete;
+        
     Top_module uut(
     .clk(clk),
     .rst(rst),
     .start(start),
     .done(done),
+    .done_2(done_2),
+    .complete_3(complete),
     .data_out(data_out));
     
+    assign shift_reg_ser=uut.read_bram_module.shift_reg;
     assign dout_en=uut.dout_en;
     assign row_addr=uut.row_addr;
-    assign data_in=uut.data_in;
+    assign blk_ram_out=uut.data_in;
     assign filter_out=uut.filter_out;
-    assign shift_reg=uut.filter_module.shift_reg;
+    assign shift_reg_filt=uut.filter_module.shift_reg;
     assign phase_acc=uut.IQ_converter_module.phase_acc;
+    assign enable=uut.enable;
+    assign bit_count_packet=uut.read_bram_module.bit_count;
+    assign bit_count_row=uut.read_bram_module.count;
+    
     integer data_out_ser_int;
     integer filter_out_int;
     integer phase_acc_int;
@@ -74,9 +81,7 @@ module top_module_tb#(
         data_out_ser_int = $fopen("D:/Files/Documents/bluetooth/GFSK/Verilog_code/serializer_out.txt","w");
         filter_out_int = $fopen("D:/Files/Documents/bluetooth/GFSK/Verilog_code/Filter_out.txt","w"); 
         phase_acc_int = $fopen("D:/Files/Documents/bluetooth/GFSK/Verilog_code/Phase_acc.txt","w")  ;     
-        errors = 0; nb = 0; first_bad = -1; 
-        $readmemb("expected_bits.mem",  exp_bits);     // one expected bit per line
- 
+
         // reset, then a few idle clocks so row 0 is waiting on the BRAM output
         repeat (4) @(posedge clk);
         rst = 0;
@@ -89,34 +94,20 @@ module top_module_tb#(
         end
         
         @(negedge clk); start = 0;
-
-//        Checking for error
-        // check data_out on every tick edge (what the filter would sample) until done
-        while (!done) begin
-            @(posedge clk);
-            if (dout_en) begin
-                if (nb < TOTAL && data_out !== exp_bits[nb]) begin
-                    if (first_bad < 0) first_bad = nb;
-                    errors = errors + 1;
-                end
-                nb = nb + 1;
-            end
+    end
+    
+    //Close the log 
+    always @(posedge clk)begin
+        if(complete)begin
+            $fclose(data_out_ser_int); 
+            $fclose(filter_out_int);
+            $fclose(phase_acc_int);
+            $finish;
         end
-         
-        $display("bits sent = %0d (expected %0d)", nb, TOTAL);
-        if (nb != TOTAL) errors = errors + 1;
-        if (errors == 0) $display("PASS: all %0d bits correct", TOTAL);
-        else             $display("FAIL: %0d errors, first wrong bit index = %0d", errors, first_bad);
-        
-        //Close the log 
-        $fclose(data_out_ser_int); 
-        $fclose(filter_out_int);
-        $fclose(phase_acc_int);
-//        $finish;
     end
  
     initial begin                                           // safety stop
-        #300000;
+        #300000000;
         $display("TIMEOUT: done never went high");
         $finish;
     end

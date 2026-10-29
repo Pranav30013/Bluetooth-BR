@@ -7,6 +7,7 @@ module Read_BRAM #(
     input dout_en,
     output reg [3:0] row_addr,
     output data_out,
+    output done_2,
     output done
     );
     
@@ -27,6 +28,8 @@ module Read_BRAM #(
     localparam [1:0] IDLE=2'd0;
     localparam [1:0] SEND=2'd1;
     
+    
+    assign done_2=(done && dout_en);
     
     //TO read or to hold
     always@(posedge clk)begin
@@ -62,7 +65,7 @@ module Read_BRAM #(
                                 count     <= count + 5'd1;
                             end
                             //Go back to ideal state
-                            if (bit_count == total_len - 1) begin   
+                            if (done) begin   
                                 state     <= IDLE;
                             end
                         end
